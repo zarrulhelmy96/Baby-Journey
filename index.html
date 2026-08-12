@@ -891,6 +891,40 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
     renderChildMood();
     renderHomeTools();
   };
+  window.loadChildProfiles=async function(user){
+    const ownerUid=user?.uid;
+    if(!ownerUid)return;
+    clearTimeout(childProfileSyncTimer);
+    childProfilesReady=false;
+    childProfilesCache={};
+    activeChildId='';
+    const childName=lang()==='en'?'Child':'Anak',blankProfile=cleanChildProfile({name:childName,nickname:childName,dob:'',gender:''}),blankSnapshot={baby:{...structuredClone(defaults.baby),name:childName,nickname:childName,dob:'',gender:'',photoUrl:'',photoData:''},logs:[],growth:[],milestones:{},appointments:[],vaccinations:[],calendarNotes:{},childMoods:{},moodNotes:{},gameStats:{},bulletinNotes:{}};
+    applyChildSnapshot(blankSnapshot,blankProfile);
+    let localProfiles={};
+    try{localProfiles=JSON.parse(localStorage.getItem(`toddlersDay.children.${ownerUid}.profiles`)||'{}')}catch{}
+    const snap=await fbDb.ref(`userData/${ownerUid}/children`).once('value');
+    if(fbAuth.currentUser?.uid!==ownerUid)return;
+    const remote=snap.val()||{};
+    childProfilesCache={...localProfiles};
+    Object.entries(remote).forEach(([id,row])=>childProfilesCache[id]=cleanChildProfile(row?.profile||row));
+    if(!Object.keys(childProfilesCache).length){
+      const id='primary',profile=blankProfile,snapshot=blankSnapshot;
+      childProfilesCache[id]=profile;
+      activeChildId=id;
+      await fbDb.ref(`userData/${ownerUid}/children/${id}`).set({profile,appData:snapshot,createdAt:firebase.database.ServerValue.TIMESTAMP});
+      remote[id]={profile,appData:snapshot};
+    }
+    activeChildId=localStorage.getItem(`toddlersDay.children.${ownerUid}.active`)||Object.keys(childProfilesCache)[0];
+    if(!childProfilesCache[activeChildId])activeChildId=Object.keys(childProfilesCache)[0];
+    localStorage.setItem(`toddlersDay.children.${ownerUid}.profiles`,JSON.stringify(childProfilesCache));
+    localStorage.setItem(`toddlersDay.children.${ownerUid}.active`,activeChildId);
+    let localData=null;
+    try{localData=JSON.parse(localStorage.getItem(`toddlersDay.children.${ownerUid}.data.${activeChildId}`)||'null')}catch{}
+    childProfilesReady=true;
+    applyChildSnapshot(remote[activeChildId]?.appData||localData||{},childProfilesCache[activeChildId]);
+    await persistActiveChild();
+    renderChildProfilePicker();
+  };
   const shopUpgradeStyles=document.createElement('style');
   shopUpgradeStyles.textContent=`
     .shopProductCard{cursor:pointer}.shopProductCard:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
