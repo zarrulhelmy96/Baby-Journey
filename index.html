@@ -282,6 +282,7 @@ html,body{max-width:100%;overflow-x:hidden}
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js"></script>
 <script>
 const firebaseConfig={apiKey:"AIzaSyAFgqvySiMAs1TtvC1r_nBZZvZIwg1g4u0",authDomain:"babyjourney-b1168.firebaseapp.com",databaseURL:"https://babyjourney-b1168-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"babyjourney-b1168",storageBucket:"babyjourney-b1168.firebasestorage.app",messagingSenderId:"617703916263",appId:"1:617703916263:web:3cc28f9f845f1c56679842"};
 firebase.initializeApp(firebaseConfig);
@@ -1487,5 +1488,114 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   });
 
   window.addEventListener('load', createInstallButton);
+})();
+</script>
+<script>
+(() => {
+  const VAPID_PUBLIC_KEY = 'BC5o60tJpLhj7xmXTmV3AI14EH-HBNStKCaeaTuv6PPftf3Dmf7Y9jqzBJItL7lLQGulguKwe5_j2eu2FjOF6bI';
+  const pushDb = firebase.database();
+  let foregroundListenerReady = false;
+
+  function deviceId() {
+    let id = localStorage.getItem('toddlers_day_push_device');
+    if (!id) {
+      id = (crypto.randomUUID?.() || `${Date.now()}-${Math.random()}`).replace(/[^a-zA-Z0-9_-]/g, '');
+      localStorage.setItem('toddlers_day_push_device', id);
+    }
+    return id;
+  }
+
+  function pushStatus(message, isError = false) {
+    const status = document.getElementById('pushNotificationStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+  }
+
+  async function registerPush(user, dailyTime) {
+    if (!window.isSecureContext || !('serviceWorker' in navigator) || !('Notification' in window)) {
+      throw new Error('Push notification hanya boleh diaktifkan melalui laman Netlify HTTPS.');
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') throw new Error('Kebenaran notifikasi tidak diberikan. Benarkan notifikasi dalam tetapan browser.');
+
+    const supported = await firebase.messaging.isSupported();
+    if (!supported) throw new Error('Browser ini belum menyokong Firebase push notification.');
+
+    const registration = await navigator.serviceWorker.register('./service-worker.js');
+    await navigator.serviceWorker.ready;
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({ vapidKey: VAPID_PUBLIC_KEY, serviceWorkerRegistration: registration });
+    if (!token) throw new Error('Token notifikasi tidak dapat dijana. Cuba tutup dan buka semula aplikasi.');
+
+    const id = deviceId();
+    await pushDb.ref(`pushNotifications/${user.uid}`).update({
+      enabled: true,
+      dailyTime: dailyTime || '20:00'
+    });
+    await pushDb.ref(`pushNotifications/${user.uid}/tokens/${id}`).set({
+      token,
+      updatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    if (!foregroundListenerReady) {
+      foregroundListenerReady = true;
+      messaging.onMessage(payload => {
+        const data = payload.data || {};
+        if (Notification.permission === 'granted') {
+          try { new Notification(data.title || 'Toddler\'s Day', { body: data.body || 'Ada peringatan baharu untuk anda.' }); }
+          catch { toast(data.body || 'Ada peringatan baharu untuk anda.'); }
+        } else toast(data.body || 'Ada peringatan baharu untuk anda.');
+      });
+    }
+  }
+
+  async function renderPushSettings(user) {
+    document.getElementById('pushNotificationCard')?.remove();
+    if (!user) return;
+    const page = document.getElementById('profile');
+    if (!page) return;
+
+    const snapshot = await pushDb.ref(`pushNotifications/${user.uid}`).once('value').catch(() => null);
+    const settings = snapshot?.val() || {};
+    const card = document.createElement('section');
+    card.id = 'pushNotificationCard';
+    card.className = 'card';
+    card.style.marginTop = '14px';
+    card.innerHTML = `
+      <h3>🔔 Peringatan harian</h3>
+      <p class="muted">Terima notifikasi untuk mengemas kini mood dan perkembangan anak walaupun aplikasi ditutup.</p>
+      <label class="check">
+        <input id="dailyPushEnabled" type="checkbox" ${settings.enabled === true ? 'checked' : ''}>
+        <span>Aktifkan push notification</span>
+      </label>
+      <div class="field">
+        <label for="dailyPushTime">Masa peringatan setiap hari (GMT+8)</label>
+        <input id="dailyPushTime" type="time" value="${settings.dailyTime || '20:00'}">
+      </div>
+      <button class="primary wide" id="savePushNotification" type="button">Simpan tetapan notifikasi</button>
+      <div class="muted" id="pushNotificationStatus" style="margin-top:9px"></div>`;
+    page.appendChild(card);
+
+    savePushNotification.onclick = async () => {
+      const enabled = dailyPushEnabled.checked;
+      const time = dailyPushTime.value || '20:00';
+      savePushNotification.disabled = true;
+      pushStatus(enabled ? 'Sedang mendaftarkan telefon…' : 'Sedang menyimpan…');
+      try {
+        if (enabled) await registerPush(user, time);
+        else await pushDb.ref(`pushNotifications/${user.uid}`).update({ enabled: false, dailyTime: time });
+        pushStatus(enabled ? 'Notifikasi aktif. Peringatan harian telah disimpan.' : 'Peringatan harian telah dimatikan.');
+        toast('Tetapan notifikasi disimpan');
+      } catch (error) {
+        dailyPushEnabled.checked = false;
+        pushStatus(error.message || 'Notifikasi tidak dapat diaktifkan.', true);
+      } finally {
+        savePushNotification.disabled = false;
+      }
+    };
+  }
+
+  firebase.auth().onAuthStateChanged(user => renderPushSettings(user));
 })();
 </script></body></html>
