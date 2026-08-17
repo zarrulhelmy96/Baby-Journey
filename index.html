@@ -264,7 +264,7 @@ async function deleteMilestoneItem(id){let en=lang()==='en';if(!confirm(en?'Dele
 const originalSaveToddlerItemData=saveToddlerItemData,originalRenderToddlerAdminList=renderToddlerAdminList;
 saveToddlerItemData=async function(type){if(type!=='activity')return originalSaveToddlerItemData(type);let en=lang()==='en',file=document.getElementById('tdActivityImage')?.files[0];if(!tdTitleMs.value.trim()||!tdTitleEn.value.trim()||!tdBodyMs.value.trim()||!tdBodyEn.value.trim())return toast(en?'Complete both languages.':'Lengkapkan kedua-dua bahasa.');if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024))return toast(en?'Use a JPG, PNG or WebP image up to 2 MB.':'Gunakan gambar JPG, PNG atau WebP maksimum 2 MB.');let id=fbDb.ref('toddlerActivities').push().key,imageUrl='',imagePath='';saveToddlerItem.disabled=true;try{if(file){let ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,''),path=`toddlerActivities/${id}/${Date.now()}.${ext}`,storageRef=fbStorage.ref(path);await storageRef.put(file);imageUrl=await storageRef.getDownloadURL();imagePath=path}await fbDb.ref('toddlerActivities/'+id).set({title:{ms:tdTitleMs.value.trim(),en:tdTitleEn.value.trim()},instructions:{ms:tdBodyMs.value.trim(),en:tdBodyEn.value.trim()},ageRange:tdAge.value.trim(),icon:tdIcon.value.trim()||'🎲',imageUrl,imagePath,active:true,createdAt:firebase.database.ServerValue.TIMESTAMP});await loadToddlerData();renderToddlerAdminForm('activity');toast(en?'Activity saved':'Aktiviti disimpan')}catch(err){toast((en?'Unable to save image/activity: ':'Gagal menyimpan gambar/aktiviti: ')+err.message)}finally{if(document.getElementById('saveToddlerItem'))saveToddlerItem.disabled=false}};
 renderToddlerActivities=function(){if(!document.getElementById('toddlerActivityGrid'))return;let rows=Object.entries(toddlerActivities).filter(([,x])=>x.active!==false);toddlerActivityGrid.innerHTML=rows.map(([id,x])=>`<div class="card activityCard" data-activity-id="${id}"><div class="art">${x.imageUrl?`<img src="${esc(x.imageUrl)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:16px;display:block">`:esc(x.icon||'🎲')}</div><h3>${esc(contentText(x,'title'))}</h3><div class="muted">${esc(x.ageRange||'1–6 tahun')}</div></div>`).join('');toddlerActivityGrid.querySelectorAll('[data-activity-id]').forEach(c=>c.onclick=()=>openToddlerActivity(c.dataset.activityId))};
-openToddlerActivity=function(id){let x=toddlerActivities[id];if(!x)return;modalTitle.textContent=contentText(x,'title');modalBody.innerHTML=`<div style="text-align:center">${x.imageUrl?`<img src="${esc(x.imageUrl)}" alt="" style="width:110px;height:110px;object-fit:cover;border-radius:24px">`:`<div style="font-size:60px">${esc(x.icon||'🎲')}</div>`}</div><div class="pill">${esc(x.ageRange||'1–6 tahun')}</div><h3 style="margin-top:16px">${lang()==='en'?'Instructions':'Arahan'}</h3><p>${esc(contentText(x,'instructions')).replaceAll('\n','<br>')}</p><div class="notice">${lang()==='en'?'Adult supervision is required.':'Pengawasan orang dewasa diperlukan.'}</div>`;modal.classList.add('open')};
+openToddlerActivity=function(id){let x=toddlerActivities[id];if(!x)return;modalTitle.textContent=contentText(x,'title');modalBody.innerHTML=`<div style="text-align:center;margin-bottom:14px">${x.imageUrl?`<img src="${esc(x.imageUrl)}" alt="${esc(contentText(x,'title'))}" style="display:block;width:100%;height:auto;max-height:68vh;object-fit:contain;border-radius:18px;background:var(--surface2);box-shadow:0 8px 22px rgba(35,57,51,.14)">`:`<div style="font-size:60px">${esc(x.icon||'🎲')}</div>`}</div><div class="pill">${esc(x.ageRange||'1–6 tahun')}</div><h3 style="margin-top:16px">Arahan</h3><p>${esc(contentText(x,'instructions')).replaceAll('\n','<br>')}</p><div class="notice">Pengawasan orang dewasa diperlukan.</div>`;modal.classList.add('open','activityDetailModal')};
 renderToddlerAdminList=function(type){originalRenderToddlerAdminList(type);if(type!=='activity')return;let list=document.getElementById('toddlerAdminList');Object.entries(toddlerActivities).forEach(([id,x])=>{if(['playdough','sorting','sensory'].includes(id))return;let button=list?.querySelector(`[data-td-delete="toddlerActivities/${id}"]`),event=button?.closest('.event'),icon=event?.querySelector('.eventIcon');if(icon&&x.imageUrl)icon.innerHTML=`<img src="${esc(x.imageUrl)}" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:12px">`;if(button)button.onclick=async()=>{if(!confirm(lang()==='en'?'Delete this activity?':'Padam aktiviti ini?'))return;await fbDb.ref('toddlerActivities/'+id).remove();if(x.imagePath)await fbStorage.ref(x.imagePath).delete().catch(()=>{});await loadToddlerData();renderToddlerAdminForm('activity')}})};
 let toddlerFactIndex=null;
 function activeToddlerFacts(){return Object.values(toddlerFacts).filter(x=>x.active!==false)}
@@ -822,7 +822,7 @@ async function redeemProfileAccessCode(profile){let user=fbAuth.currentUser,en=l
 /* Multi-child profiles: three included profiles, with isolated child data. */
 const CHILD_PROFILE_LIMIT=3;
 let childProfilesCache={},activeChildId='',childProfileSyncTimer=null,childProfilesReady=false;
-const childStateFields=['baby','logs','growth','milestones','appointments','vaccinations','calendarNotes','childMoods','moodNotes','gameStats'];
+const childStateFields=['baby','logs','growth','milestones','appointments','vaccinations','calendarNotes','childMoods','moodNotes','gameStats','scheduleChecks'];
 function childProfileUser(){return fbAuth.currentUser}
 function childProfileLocalKey(suffix='profiles'){let uid=childProfileUser()?.uid||'guest';return `toddlersDay.children.${uid}.${suffix}`}
 function makeChildId(){return 'child_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
@@ -1136,11 +1136,19 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   state.settings.language='ms';
   const malayOnlyStyle=document.createElement('style');
   malayOnlyStyle.id='malayOnlyStyle';
-  malayOnlyStyle.textContent=`.malayOnlyHidden{display:none!important}.formgrid:has(>.malayOnlyHidden){grid-template-columns:1fr!important}`;
+  malayOnlyStyle.textContent=`.malayOnlyHidden{display:none!important}.formgrid:has(>.malayOnlyHidden){grid-template-columns:1fr!important}.modal.activityDetailModal{align-items:center;padding:14px}.modal.activityDetailModal .sheet{width:min(100%,620px);max-height:calc(100vh - 28px);border-radius:25px;padding:10px 18px 22px}.modal.activityDetailModal .handle{display:none}.scheduleDoneHead,.scheduleDoneCell{width:54px;text-align:center!important}.scheduleDoneCheck{width:31px;height:31px;margin:auto;border:2px solid rgba(255,255,255,.55);border-radius:10px;display:grid;place-items:center;cursor:pointer;background:rgba(255,255,255,.08)}.scheduleDoneCheck input{position:absolute;opacity:0;pointer-events:none}.scheduleDoneCheck span{font-family:Arial,sans-serif;font-size:18px;font-weight:900;color:transparent}.scheduleDoneCheck:has(input:checked){background:#ffe28c;border-color:#ffe28c;box-shadow:0 3px 9px rgba(0,0,0,.2)}.scheduleDoneCheck:has(input:checked) span{color:#285045}.scheduleCompleted .tableTitle b{text-decoration:line-through;opacity:.72}.scheduleCompleted{background:rgba(255,226,140,.09)}@media(max-width:600px){.modal.activityDetailModal{padding:8px}.modal.activityDetailModal .sheet{width:100%;max-height:calc(100vh - 16px);padding:9px 12px 18px;border-radius:22px}.scheduleDoneHead,.scheduleDoneCell{width:38px!important;padding-left:2px!important;padding-right:2px!important}.scheduleDoneCheck{width:27px;height:27px;border-radius:8px}.scheduleChecklistTable th:first-child,.scheduleChecklistTable td:first-child{width:22%}.scheduleChecklistTable th:nth-child(2),.scheduleChecklistTable td:nth-child(2){width:25%}}`;
   document.head.appendChild(malayOnlyStyle);
+  closeModal.addEventListener('click',()=>modal.classList.remove('activityDetailModal'));
+  modal.addEventListener('click',event=>{if(event.target===modal)modal.classList.remove('activityDetailModal')});
   const bindMalayField=(source,target)=>{
     if(!source||!target)return;
     target.value=source.value;
+    const sourceLabel=source.closest('.field')?.querySelector('label');
+    if(sourceLabel){
+      const labels={'Title (BM)':'Tajuk','Instructions (BM)':'Arahan','Fact (BM)':'Fakta','Milestone (BM)':'Perkembangan','Notes (BM)':'Nota','Description (BM)':'Penerangan','Content (BM)':'Kandungan','Announcement (BM)':'Pengumuman'};
+      const updatedLabel=labels[sourceLabel.textContent.trim()]||sourceLabel.textContent.replace(/\s*\(BM\)\s*$/,'');
+      if(sourceLabel.textContent!==updatedLabel)sourceLabel.textContent=updatedLabel;
+    }
     const field=target.closest('.field');
     if(field&&!field.classList.contains('malayOnlyHidden'))field.classList.add('malayOnlyHidden');
     if(source.dataset.malayMirrorBound)return;
@@ -1150,8 +1158,127 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   const applyMalayOnlyAdminFields=()=>{
     modalBody.querySelectorAll('[id$="En"]').forEach(target=>bindMalayField(document.getElementById(target.id.slice(0,-2)+'Ms'),target));
     modalBody.querySelectorAll('[data-week-en]').forEach(target=>bindMalayField(target.closest('.weeklyEntry')?.querySelector('[data-week-ms]'),target));
+    const ageInput=document.getElementById('tdAge');
+    if(ageInput&&ageInput.tagName!=='SELECT'){
+      const ageSelect=document.createElement('select');ageSelect.id='tdAge';
+      ageSelect.innerHTML=`<option value="1–2 tahun">1–2 tahun</option><option value="2–3 tahun">2–3 tahun</option><option value="3–4 tahun">3–4 tahun</option><option value="4–5 tahun">4–5 tahun</option><option value="5–6 tahun">5–6 tahun</option><option value="1–6 tahun">Semua umur (1–6 tahun)</option>`;
+      const previous=ageInput.value.trim().replace(/-/g,'–');
+      ageInput.replaceWith(ageSelect);
+      if([...ageSelect.options].some(option=>option.value===previous))ageSelect.value=previous;
+    }
+    modalBody.querySelectorAll('.notice').forEach(notice=>{
+      const updatedNotice=notice.textContent.replace(/\s*Lengkapkan ruangan BM dan EN\.?/gi,'').replace(/\s*Complete both BM and EN fields\.?/gi,'');
+      if(notice.textContent!==updatedNotice)notice.textContent=updatedNotice;
+    });
   };
   new MutationObserver(applyMalayOnlyAdminFields).observe(modalBody,{childList:true,subtree:true});
+  modalBody.addEventListener('click',event=>{
+    if(event.target.closest('#saveToddlerItem,#saveMilestoneBtn,#saveRecipeBtn,#acSave,#saveBulletinBtn,#saveShopProductBtn,#saveWeeklyScheduleBtn'))applyMalayOnlyAdminFields();
+  },true);
+  /* Gantikan terus validasi lama dwibahasa untuk kandungan toddler. */
+  window.saveToddlerItemData=async function(type){
+    const bmTitle=document.getElementById('tdTitleMs')?.value.trim()||'',bmBody=document.getElementById('tdBodyMs')?.value.trim()||'';
+    let path,data,file;
+    if(type==='schedule'){
+      if(!tdDate.value||!tdStart.value||!tdEnd.value||!bmTitle)return toast('Lengkapkan ruangan jadual.');
+      const selectedDate=new Date(tdDate.value+'T12:00:00');
+      path='toddlerSchedules';data={date:tdDate.value,day:selectedDate.getDay(),start:tdStart.value,end:tdEnd.value,type:tdItemType.value,title:{ms:bmTitle,en:bmTitle},linkType:tdLinkType.value,linkId:tdLinkId.value.trim(),active:true,createdAt:firebase.database.ServerValue.TIMESTAMP};
+    }else if(type==='fact'){
+      if(!bmBody)return toast('Lengkapkan ruangan fakta.');
+      const group=document.getElementById('factAgeGroup')?.value||'all';
+      path='toddlerFacts';data={text:{ms:bmBody,en:bmBody},ageGroup:group,ageRange:group==='all'?'Semua umur':group.replace('-','–')+' tahun',active:true,createdAt:firebase.database.ServerValue.TIMESTAMP};
+    }else{
+      if(!bmTitle||!bmBody)return toast('Lengkapkan tajuk dan arahan.');
+      file=document.getElementById('tdActivityImage')?.files?.[0];
+      if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024))return toast('Gunakan gambar JPG, PNG atau WebP maksimum 2 MB.');
+      const id=fbDb.ref('toddlerActivities').push().key;let imageUrl='',imagePath='';
+      saveToddlerItem.disabled=true;
+      try{
+        if(file){const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,''),storagePath=`toddlerActivities/${id}/${Date.now()}.${ext}`,storageRef=fbStorage.ref(storagePath);await storageRef.put(file);imageUrl=await storageRef.getDownloadURL();imagePath=storagePath}
+        data={title:{ms:bmTitle,en:bmTitle},instructions:{ms:bmBody,en:bmBody},ageRange:tdAge.value.trim(),icon:tdIcon.value.trim()||'🎲',imageUrl,imagePath,active:true,createdAt:firebase.database.ServerValue.TIMESTAMP};
+        await fbDb.ref('toddlerActivities/'+id).set(data);await loadToddlerData();renderToddlerAdminForm('activity');toast('Aktiviti disimpan');return;
+      }catch(error){toast('Gagal menyimpan aktiviti: '+error.message);return}
+      finally{if(document.getElementById('saveToddlerItem'))saveToddlerItem.disabled=false}
+    }
+    saveToddlerItem.disabled=true;
+    try{await fbDb.ref(path).push(data);await loadToddlerData();renderToddlerAdminForm(type);toast('Kandungan disimpan')}catch(error){toast('Kandungan gagal disimpan: '+error.message)}finally{if(document.getElementById('saveToddlerItem'))saveToddlerItem.disabled=false}
+  };
+  /* Penapis umur untuk koleksi aktiviti, sama seperti bahagian permainan. */
+  let toddlerActivityAge='1-2';
+  const activityPanel=document.getElementById('activityLibraryPanel');
+  if(activityPanel&&!document.getElementById('activityAgeTabs')){
+    const tabs=document.createElement('div');tabs.id='activityAgeTabs';tabs.className='miniGameAgeTabs activityAgeTabs';
+    tabs.innerHTML=['1-2','2-3','3-4','4-5','5-6'].map((age,index)=>`<button class="chip ${index===0?'active':''}" data-activity-age="${age}">${age.replace('-','–')} tahun</button>`).join('');
+    const intro=activityPanel.querySelector(':scope > .muted');
+    if(intro)intro.after(tabs);else activityPanel.prepend(tabs);
+    tabs.addEventListener('click',event=>{const button=event.target.closest('[data-activity-age]');if(!button)return;toddlerActivityAge=button.dataset.activityAge;tabs.querySelectorAll('.chip').forEach(item=>item.classList.toggle('active',item===button));renderToddlerActivities()});
+  }
+  const activityMatchesAge=(range,group)=>{
+    const values=String(range||'').match(/\d+/g)?.map(Number)||[];
+    if(values.length<2)return true;
+    const [minimum,maximum]=values,[start,end]=group.split('-').map(Number);
+    return minimum<=start&&maximum>=end;
+  };
+  window.renderToddlerActivities=function(){
+    const grid=document.getElementById('toddlerActivityGrid');if(!grid)return;
+    const rows=Object.entries(toddlerActivities).filter(([,item])=>item.active!==false&&activityMatchesAge(item.ageRange,toddlerActivityAge));
+    grid.innerHTML=rows.length?rows.map(([id,item])=>`<div class="card activityCard" data-activity-id="${esc(id)}"><div class="art">${item.imageUrl?`<img src="${esc(item.imageUrl)}" alt="${esc(contentText(item,'title'))}" style="width:64px;height:64px;object-fit:cover;border-radius:16px;display:block">`:esc(item.icon||'🎲')}</div><h3>${esc(contentText(item,'title'))}</h3><div class="muted">${esc(item.ageRange||'1–6 tahun')}</div></div>`).join(''):`<div class="card empty" style="grid-column:1/-1">Belum ada aktiviti untuk umur ${toddlerActivityAge.replace('-','–')} tahun.</div>`;
+    grid.querySelectorAll('[data-activity-id]').forEach(card=>card.onclick=()=>openToddlerActivity(card.dataset.activityId));
+  };
+  renderToddlerActivities();
+  /* Jadual tujuh hari, dengan status siap berasingan bagi setiap tarikh dan profil anak. */
+  const weeklyHomeStyle=document.createElement('style');
+  weeklyHomeStyle.textContent=`
+    .weeklyHomeSchedule{display:grid;gap:10px;text-align:left}
+    .weeklyHomeDay{border:1px dashed rgba(255,255,255,.28);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.055)}
+    .weeklyHomeDay.isToday{border-color:#ffd272;box-shadow:inset 4px 0 #ffd272;background:rgba(255,210,114,.1)}
+    .weeklyHomeDayHead{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit}
+    .weeklyHomeDayHead h3{margin:0;color:#fff;font-size:16px;line-height:1.2}
+    .weeklyHomeDayMeta{display:flex;align-items:center;gap:8px;color:#d8e8e1;font-size:12px;white-space:nowrap}
+    .weeklyHomeArrow{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:14px;transition:transform .2s ease}
+    .weeklyHomeDay.isOpen .weeklyHomeArrow{transform:rotate(180deg)}
+    .weeklyHomePanel{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s ease;border-top:0 solid rgba(255,255,255,.14)}
+    .weeklyHomeDay.isOpen .weeklyHomePanel{grid-template-rows:1fr;border-top-width:1px}
+    .weeklyHomePanelInner{min-height:0;overflow:hidden}
+    .weeklyHomeRows{display:grid}
+    .weeklyHomeRow{display:grid;grid-template-columns:82px minmax(0,1fr) 34px;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.11)}
+    .weeklyHomeRow:last-child{border-bottom:0}
+    .weeklyHomeRow.scheduleCompleted{opacity:.58}
+    .weeklyHomeRow.scheduleCompleted .weeklyHomeTitle{text-decoration:line-through}
+    .weeklyHomeTime{color:#ffe29c;font-size:12px;line-height:1.25}
+    .weeklyHomeContent{min-width:0;color:#fff}
+    .weeklyHomeContent .mealBadge{display:inline-flex;margin-bottom:3px;font-size:11px;padding:3px 7px}
+    .weeklyHomeTitle{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+    .weeklyHomeContent small{display:block;color:#c5d8d0;font-size:10px}
+    .weeklyHomeEmpty{padding:10px 12px;color:#c7d8d1;font-size:12px}
+    @media(max-width:520px){
+      .weeklyHomeSchedule{gap:7px}.weeklyHomeDayHead{padding:7px 9px}.weeklyHomeDayHead h3{font-size:14px}
+      .weeklyHomeRow{grid-template-columns:64px minmax(0,1fr) 30px;gap:6px;padding:7px 8px}
+      .weeklyHomeTime{font-size:10px}.weeklyHomeTitle{font-size:12px}.weeklyHomeContent .mealBadge{font-size:9px;padding:2px 5px}
+    }
+  `;
+  document.head.appendChild(weeklyHomeStyle);
+  window.renderDailySchedule=function(){
+    const today=gmt8Now(),todayKey=dateKey(today),monday=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    monday.setDate(monday.getDate()-((monday.getDay()+6)%7));
+    const days=Array.from({length:7},(_,index)=>{const value=new Date(monday);value.setDate(monday.getDate()+index);return value});
+    const allRows=Object.entries(toddlerSchedules).map(([id,item])=>({id,...item}));
+    const rowsByDate={};
+    state.scheduleChecks=state.scheduleChecks||{};
+    if(dailyScheduleTitle)dailyScheduleTitle.textContent='Jadual Mingguan';
+    dailySchedule.innerHTML=`<div class="weeklyHomeSchedule">${days.map(date=>{
+      const key=dateKey(date),rows=allRows.filter(item=>item.active!==false&&(item.date===key||(!item.date&&Number(item.day)===date.getDay()))).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+      rowsByDate[key]=rows;
+      const dayLabel=date.toLocaleDateString('ms-MY',{weekday:'long',day:'numeric',month:'short'});
+      const isToday=key===todayKey;
+      return `<section class="weeklyHomeDay ${isToday?'isToday isOpen':''}" data-weekly-day><button type="button" class="weeklyHomeDayHead" data-weekly-toggle aria-expanded="${isToday?'true':'false'}"><h3>${esc(dayLabel)}${isToday?' · Hari ini':''}</h3><span class="weeklyHomeDayMeta"><span>${rows.length} aktiviti</span><span class="weeklyHomeArrow">⌄</span></span></button><div class="weeklyHomePanel"><div class="weeklyHomePanelInner">${rows.length?`<div class="weeklyHomeRows">${rows.map(item=>{const icon=item.type==='meal'?'🍳':item.type==='activity'?'🎨':'🕐',type=item.type==='meal'?'Makanan':item.type==='activity'?'Aktiviti':'Rutin',checkKey=`${key}::${item.id}`,checked=state.scheduleChecks[checkKey]===true;return `<div class="weeklyHomeRow ${checked?'scheduleCompleted':''}" data-schedule-id="${esc(item.id)}" data-schedule-date="${esc(key)}"><div class="weeklyHomeTime">${esc(item.start||'--:--')}<br>– ${esc(item.end||'--:--')}</div><div class="weeklyHomeContent"><span class="mealBadge">${icon} ${type}</span><b class="weeklyHomeTitle">${esc(contentText(item,'title'))}</b>${item.linkType?'<small>Tekan untuk buka</small>':''}</div><label class="scheduleDoneCheck" title="Tandakan selesai"><input type="checkbox" data-schedule-check="${esc(checkKey)}" ${checked?'checked':''}><span>✓</span></label></div>`}).join('')}</div>`:`<div class="weeklyHomeEmpty">Belum ada jadual.</div>`}</div></div></section>`;
+    }).join('')}</div>`;
+    dailySchedule.querySelectorAll('[data-weekly-toggle]').forEach(button=>button.addEventListener('click',()=>{const day=button.closest('[data-weekly-day]'),open=!day.classList.contains('isOpen');day.classList.toggle('isOpen',open);button.setAttribute('aria-expanded',String(open))}));
+    dailySchedule.querySelectorAll('[data-schedule-check]').forEach(input=>input.addEventListener('click',event=>event.stopPropagation()));
+    dailySchedule.querySelectorAll('[data-schedule-check]').forEach(input=>input.addEventListener('change',()=>{if(input.checked)state.scheduleChecks[input.dataset.scheduleCheck]=true;else delete state.scheduleChecks[input.dataset.scheduleCheck];save();input.closest('.weeklyHomeRow')?.classList.toggle('scheduleCompleted',input.checked);toast(input.checked?'Aktiviti ditandakan selesai':'Tanda selesai dibuang')}));
+    dailySchedule.querySelectorAll('[data-schedule-id]').forEach(row=>row.addEventListener('click',event=>{if(!event.target.closest('.scheduleDoneCheck'))openScheduleItem(row.dataset.scheduleId,rowsByDate[row.dataset.scheduleDate]||[])}));
+  };
+  renderDailySchedule(gmt8Now().getDay());
   const setMalayText=(element,value)=>{if(element&&element.textContent!==value)element.textContent=value};
   const applyMalayOnlyLabels=()=>{
     setMalayText(document.querySelector('#playLearnTabs [data-play-panel="games"]'),'🎮 Permainan');
