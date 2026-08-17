@@ -182,6 +182,34 @@ body.dark .toddlerHero{background:linear-gradient(135deg,#3f5b54 0%,#304843 54%,
 @media(max-width:540px){.modal:has(#shopTitleMs),.modal:has(#adminAccessPaymentUrl){padding:10px}.modal:has(#shopTitleMs) .sheet,.modal:has(#adminAccessPaymentUrl) .sheet{width:100%;max-height:calc(100vh - 20px);padding:8px 14px 17px;border-radius:21px}.modal:has(#shopTitleMs) .formgrid{gap:8px}.modal:has(#shopTitleMs) .sheethead h2,.modal:has(#adminAccessPaymentUrl) .sheethead h2{font-size:21px}}
 .trialAccessCard{margin:18px 0;padding:17px;background:linear-gradient(135deg,#fff1c7,#dcefeb);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}.trialAccessHead{display:flex;gap:12px;align-items:center;margin-bottom:12px}.trialAccessIcon{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.7);font-size:23px}.trialAccessHead h3{margin:0}.trialAccessGrid{display:grid;grid-template-columns:1fr auto;gap:8px}.trialAccessGrid input{min-width:0}.trialPaidCard{background:linear-gradient(135deg,#dff2e8,#dcefeb)}@media(max-width:390px){.trialAccessGrid{grid-template-columns:1fr}.trialAccessGrid button{width:100%}}
 </style>
+<style id="compactMobileNavigation">
+@media(max-width:600px){
+  body{padding-bottom:70px}
+  .nav{
+    min-height:58px;
+    padding:3px 6px max(5px,env(safe-area-inset-bottom));
+    border-radius:17px 17px 0 0;
+  }
+  .nav button{
+    min-width:0;
+    min-height:48px;
+    padding:1px 2px;
+    font-size:8px;
+    line-height:1.05;
+  }
+  .nav b{font-size:16px;margin-bottom:1px;line-height:1}
+  .nav .centerHomeNav .homeAvatar{
+    width:49px;
+    height:49px;
+    margin:-19px auto 2px;
+    border-width:4px;
+    font-size:20px;
+  }
+  .nav .centerHomeNav span:last-child{font-size:8px}
+  .toast{bottom:76px}
+  .fab{bottom:72px}
+}
+</style>
 </head>
 <body><div class="app">
 <header class="topbar"><div class="brand"><div class="brandmark">🌈</div><div>Toddler's Day<div class="muted">Play, learn & grow.</div></div></div><button class="iconbtn" id="themeBtn" aria-label="Tukar tema">☾</button></header>
