@@ -198,6 +198,16 @@ html,body{max-width:100%;overflow-x:hidden}
 #dailyFact.factDropdownCard.factDropdownClosed .foodFactDisclaimer{display:none!important}
 #dailyFact.factDropdownCard.factDropdownClosed p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0;padding-right:27px;font-size:12px;line-height:1.4;color:var(--ink)}
 #dailyFact.factDropdownCard.factDropdownClosed:after{content:'Tekan untuk lihat';position:absolute;right:12px;bottom:8px;color:var(--muted);font-size:8px}
+.imageUploadChoices{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:6px}
+.imageUploadChoices>input[type='file']{min-width:0;margin:0!important}
+.pasteImageButton{border:0;border-radius:13px;padding:12px 13px;background:var(--brand2);color:var(--ink);font:inherit;font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer}
+.pasteImageButton.waitingPaste{outline:3px solid color-mix(in srgb,var(--brand) 32%,transparent);animation:pastePulse 1s ease-in-out infinite alternate}
+@keyframes pastePulse{to{filter:brightness(.94);transform:scale(.98)}}
+.activityAdminScrollList{max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding:4px 7px 4px 2px;margin-top:7px;border-radius:15px;scrollbar-color:var(--brand) var(--surface2);scrollbar-width:thin}
+.activityAdminScrollList .event{background:var(--surface);padding:9px 7px;margin-bottom:5px;border:1px solid var(--line);border-radius:13px}
+.activityAdminScrollList .event:last-child{margin-bottom:0}
+.activityAdminScrollList::-webkit-scrollbar{width:7px}.activityAdminScrollList::-webkit-scrollbar-track{background:var(--surface2);border-radius:8px}.activityAdminScrollList::-webkit-scrollbar-thumb{background:var(--brand);border-radius:8px}
+@media(max-width:390px){.imageUploadChoices{grid-template-columns:1fr}.pasteImageButton{width:100%}}
 @media(max-width:600px){
   body{padding-bottom:70px}
   .nav{
@@ -230,6 +240,7 @@ html,body{max-width:100%;overflow-x:hidden}
   #home.page{overflow-x:hidden}
   #toddlerHome{overflow:hidden}
   .homeTools{width:100%;grid-template-columns:minmax(0,1fr)!important}
+  .activityAdminScrollList{max-height:300px}
 }
 </style>
 </head>
@@ -1242,16 +1253,24 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
       file=document.getElementById('tdActivityImage')?.files?.[0];
       if(file&&(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024))return toast('Gunakan gambar JPG, PNG atau WebP maksimum 2 MB.');
       const id=fbDb.ref('toddlerActivities').push().key;let imageUrl='',imagePath='';
-      saveToddlerItem.disabled=true;
+      const activityButton=document.getElementById('saveToddlerItem'),originalButtonText=activityButton?.textContent||'Tambah aktiviti';
+      if(activityButton){activityButton.disabled=true;activityButton.setAttribute('aria-busy','true');activityButton.textContent=file?'Memuat naik gambar…':'Sedang menyimpan…'}
       try{
-        if(file){const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,''),storagePath=`toddlerActivities/${id}/${Date.now()}.${ext}`,storageRef=fbStorage.ref(storagePath);await storageRef.put(file);imageUrl=await storageRef.getDownloadURL();imagePath=storagePath}
-        data={title:{ms:bmTitle,en:bmTitle},instructions:{ms:bmBody,en:bmBody},ageRange:tdAge.value.trim(),icon:tdIcon.value.trim()||'🎲',imageUrl,imagePath,active:true,createdAt:firebase.database.ServerValue.TIMESTAMP};
+        if(file){const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-z0-9]/gi,''),storagePath=`toddlerActivities/${id}/${Date.now()}.${ext}`,storageRef=fbStorage.ref(storagePath),uploadTask=storageRef.put(file);uploadTask.on('state_changed',snapshot=>{if(activityButton?.isConnected){const percent=Math.max(1,Math.round(snapshot.bytesTransferred/snapshot.totalBytes*100));activityButton.textContent=`Memuat naik ${percent}%`}});await uploadTask;imageUrl=await storageRef.getDownloadURL();imagePath=storagePath}
+        if(activityButton?.isConnected)activityButton.textContent='Sedang menyimpan aktiviti…';
+        data={title:{ms:bmTitle,en:bmTitle},instructions:{ms:bmBody,en:bmBody},ageRange:document.getElementById('tdAge')?.value.trim()||'1–6 tahun',icon:document.getElementById('tdIcon')?.value.trim()||'🎲',imageUrl,imagePath,active:true,createdAt:firebase.database.ServerValue.TIMESTAMP};
         await fbDb.ref('toddlerActivities/'+id).set(data);await loadToddlerData();renderToddlerAdminForm('activity');toast('Aktiviti disimpan');return;
-      }catch(error){toast('Gagal menyimpan aktiviti: '+error.message);return}
-      finally{if(document.getElementById('saveToddlerItem'))saveToddlerItem.disabled=false}
+      }catch(error){showModalAdminError('Gagal menyimpan aktiviti: '+(error?.message||'Sila cuba semula.'));return}
+      finally{if(activityButton?.isConnected){activityButton.disabled=false;activityButton.removeAttribute('aria-busy');activityButton.textContent=originalButtonText}}
     }
     saveToddlerItem.disabled=true;
     try{await fbDb.ref(path).push(data);await loadToddlerData();renderToddlerAdminForm(type);toast('Kandungan disimpan')}catch(error){toast('Kandungan gagal disimpan: '+error.message)}finally{if(document.getElementById('saveToddlerItem'))saveToddlerItem.disabled=false}
+  };
+  const renderToddlerAdminListBeforeActivityScroll=window.renderToddlerAdminList;
+  window.renderToddlerAdminList=function(type){
+    renderToddlerAdminListBeforeActivityScroll.apply(this,arguments);
+    const list=document.getElementById('toddlerAdminList');
+    if(list)list.classList.toggle('activityAdminScrollList',type==='activity');
   };
   /* Penapis umur untuk koleksi aktiviti, sama seperti bahagian permainan. */
   let toddlerActivityAge='1-2';
@@ -1355,6 +1374,39 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   const renderDailyFactBeforeDropdown=window.renderDailyFact;
   window.renderDailyFact=function(){renderDailyFactBeforeDropdown.apply(this,arguments);syncFactDropdown()};
   syncFactDropdown();
+  /* Semua input gambar mempunyai dua pilihan: pilih fail atau tampal daripada clipboard. */
+  let pendingPasteInput=null,pendingPasteButton=null;
+  const putPastedImageIntoInput=(input,blob)=>{
+    if(!input||!blob||!blob.type.startsWith('image/'))return false;
+    const extension=blob.type.split('/')[1]?.replace('jpeg','jpg')||'png',file=blob instanceof File?blob:new File([blob],`gambar-tampal-${Date.now()}.${extension}`,{type:blob.type}),transfer=new DataTransfer();
+    if(input.multiple)[...(input.files||[])].forEach(existing=>transfer.items.add(existing));
+    transfer.items.add(file);input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));
+    pendingPasteButton?.classList.remove('waitingPaste');pendingPasteInput=null;pendingPasteButton=null;toast('Gambar berjaya ditampal');return true;
+  };
+  const readImageClipboard=async input=>{
+    if(!navigator.clipboard?.read)throw new Error('clipboard-read-unavailable');
+    const items=await navigator.clipboard.read();
+    for(const item of items){const type=item.types.find(value=>value.startsWith('image/'));if(type&&putPastedImageIntoInput(input,await item.getType(type)))return true}
+    return false;
+  };
+  const enhanceImagePasteInputs=(root=document)=>{
+    root.querySelectorAll?.('input[type="file"][accept*="image"]:not([data-paste-ready])').forEach(input=>{
+      input.dataset.pasteReady='1';
+      const wrapper=document.createElement('div'),button=document.createElement('button');wrapper.className='imageUploadChoices';button.type='button';button.className='pasteImageButton';button.innerHTML='📋 Tampal gambar';
+      input.parentNode.insertBefore(wrapper,input);wrapper.append(input,button);
+      button.onclick=async()=>{
+        pendingPasteButton?.classList.remove('waitingPaste');pendingPasteInput=input;pendingPasteButton=button;button.classList.add('waitingPaste');
+        try{if(await readImageClipboard(input))return;toast('Clipboard tiada gambar. Salin gambar kemudian tekan Ctrl+V.')}catch(error){toast('Tekan Ctrl+V untuk menampal gambar di sini.')}
+      };
+    });
+  };
+  document.addEventListener('paste',event=>{
+    if(!pendingPasteInput?.isConnected)return;
+    const file=[...(event.clipboardData?.items||[])].find(item=>item.type.startsWith('image/'))?.getAsFile();
+    if(file){event.preventDefault();putPastedImageIntoInput(pendingPasteInput,file)}else toast('Tiada gambar ditemui dalam clipboard.')
+  });
+  enhanceImagePasteInputs();
+  new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1){if(node.matches?.('input[type="file"][accept*="image"]'))enhanceImagePasteInputs(node.parentElement);else enhanceImagePasteInputs(node)}}))).observe(document.body,{childList:true,subtree:true});
   const setMalayText=(element,value)=>{if(element&&element.textContent!==value)element.textContent=value};
   const applyMalayOnlyLabels=()=>{
     setMalayText(document.querySelector('#playLearnTabs [data-play-panel="games"]'),'🎮 Permainan');
