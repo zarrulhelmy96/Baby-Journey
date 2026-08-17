@@ -2,7 +2,17 @@
 <html lang="ms">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#87a9a3"><title>Toddler's Day — Play, learn & grow</title>
+<meta name="theme-color" content="#668f88">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Toddler Day">
+<meta name="application-name" content="Toddler's Day">
+<meta name="description" content="Teman harian ibu bapa untuk aktiviti, perkembangan, resipi dan rutin kanak-kanak.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./assets/icons/toddler-day-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./assets/icons/toddler-day-icon.svg">
+<title>Toddler's Day — Play, learn & grow</title>
 <style>
 @font-face{font-family:'Skynight';src:url('./assets/fonts/Skynight.otf') format('opentype');font-style:normal;font-weight:400;font-display:swap}
 :root{--bg:#f6f3ed;--surface:#fff;--surface2:#eef5f3;--ink:#25322f;--muted:#71807c;--brand:#668f88;--brand2:#dcebe7;--peach:#f4dfd2;--blue:#dceaf4;--yellow:#f5e8bd;--danger:#b55e62;--line:#e6e5df;--shadow:0 10px 30px rgba(53,74,69,.09);--r:22px}
@@ -1427,5 +1437,55 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   const updateMiniGamesLanguageBeforeMalayOnly=window.updateMiniGamesLanguage;
   if(updateMiniGamesLanguageBeforeMalayOnly)window.updateMiniGamesLanguage=function(){updateMiniGamesLanguageBeforeMalayOnly.apply(this,arguments);applyMalayOnlyLabels()};
   applyMalayOnlyLabels();
+})();
+</script>
+<script>
+(() => {
+  if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(error => {
+      console.warn('PWA service worker tidak dapat didaftarkan:', error);
+    });
+  });
+
+  let installPrompt = null;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+  const createInstallButton = () => {
+    if (isStandalone || document.getElementById('installToddlerDay')) return;
+    const profilePage = document.getElementById('profile');
+    if (!profilePage) return;
+    const card = document.createElement('section');
+    card.id = 'installToddlerDay';
+    card.className = 'card';
+    card.style.marginTop = '14px';
+    card.innerHTML = '<h3>📲 Pasang Toddler\'s Day</h3><p class="muted">Pasang aplikasi pada skrin utama telefon untuk akses yang lebih mudah.</p><button class="primary wide" type="button">Pasang aplikasi</button>';
+    card.querySelector('button').addEventListener('click', async () => {
+      if (!installPrompt) {
+        toast('Buka menu pelayar dan pilih “Tambah ke skrin utama”.');
+        return;
+      }
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      installPrompt = null;
+      card.remove();
+    });
+    profilePage.appendChild(card);
+  };
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    installPrompt = event;
+    createInstallButton();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    document.getElementById('installToddlerDay')?.remove();
+    toast('Toddler\'s Day berjaya dipasang!');
+  });
+
+  window.addEventListener('load', createInstallButton);
 })();
 </script></body></html>

@@ -1,0 +1,28 @@
+{
+  "name": "Toddler's Day",
+  "short_name": "Toddler Day",
+  "description": "Teman harian ibu bapa untuk aktiviti, perkembangan, resipi dan rutin kanak-kanak.",
+  "lang": "ms",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f6f3ed",
+  "theme_color": "#668f88",
+  "categories": ["parenting", "education", "lifestyle"],
+  "icons": [
+    {
+      "src": "./assets/icons/toddler-day-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/toddler-day-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
