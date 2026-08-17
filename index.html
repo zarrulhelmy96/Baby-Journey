@@ -183,9 +183,28 @@ body.dark .toddlerHero{background:linear-gradient(135deg,#3f5b54 0%,#304843 54%,
 .trialAccessCard{margin:18px 0;padding:17px;background:linear-gradient(135deg,#fff1c7,#dcefeb);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}.trialAccessHead{display:flex;gap:12px;align-items:center;margin-bottom:12px}.trialAccessIcon{width:44px;height:44px;display:grid;place-items:center;border-radius:15px;background:rgba(255,255,255,.7);font-size:23px}.trialAccessHead h3{margin:0}.trialAccessGrid{display:grid;grid-template-columns:1fr auto;gap:8px}.trialAccessGrid input{min-width:0}.trialPaidCard{background:linear-gradient(135deg,#dff2e8,#dcefeb)}@media(max-width:390px){.trialAccessGrid{grid-template-columns:1fr}.trialAccessGrid button{width:100%}}
 </style>
 <style id="compactMobileNavigation">
+html,body{max-width:100%;overflow-x:hidden}
+#home,#toddlerHome,#toddlerHome>*{width:100%;max-width:100%;min-width:0}
+#dailyScheduleBoard,#dailySchedule,.weeklyHomeSchedule,.weeklyHomeDay,.weeklyHomePanel,.weeklyHomePanelInner,
+#dailyFact,.homeTools,.homeTools>*{max-width:100%;min-width:0}
+#factHeading.factDropdownHeading{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;user-select:none}
+#factHeading.factDropdownHeading:after{content:'⌄';display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:50%;background:var(--brand2);font-size:16px;transition:transform .2s ease}
+#factHeading.factDropdownHeading.factDropdownOpen:after{transform:rotate(180deg)}
+#dailyFact.factDropdownCard{transition:opacity .2s ease,transform .2s ease}
+#dailyFact.factDropdownCard.factDropdownClosed{padding:11px 13px;min-height:62px;cursor:pointer}
+#dailyFact.factDropdownCard.factDropdownClosed h3{margin:0 0 4px;font-size:14px}
+#dailyFact.factDropdownCard.factDropdownClosed .pill,
+#dailyFact.factDropdownCard.factDropdownClosed button,
+#dailyFact.factDropdownCard.factDropdownClosed .foodFactDisclaimer{display:none!important}
+#dailyFact.factDropdownCard.factDropdownClosed p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden;margin:0;padding-right:27px;font-size:12px;line-height:1.4;color:var(--ink)}
+#dailyFact.factDropdownCard.factDropdownClosed:after{content:'Tekan untuk lihat';position:absolute;right:12px;bottom:8px;color:var(--muted);font-size:8px}
 @media(max-width:600px){
   body{padding-bottom:70px}
   .nav{
+    left:0;
+    transform:none;
+    width:100%;
+    max-width:100vw;
     min-height:58px;
     padding:3px 6px max(5px,env(safe-area-inset-bottom));
     border-radius:17px 17px 0 0;
@@ -208,6 +227,9 @@ body.dark .toddlerHero{background:linear-gradient(135deg,#3f5b54 0%,#304843 54%,
   .nav .centerHomeNav span:last-child{font-size:8px}
   .toast{bottom:76px}
   .fab{bottom:72px}
+  #home.page{overflow-x:hidden}
+  #toddlerHome{overflow:hidden}
+  .homeTools{width:100%;grid-template-columns:minmax(0,1fr)!important}
 }
 </style>
 </head>
@@ -1307,6 +1329,32 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
     dailySchedule.querySelectorAll('[data-schedule-id]').forEach(row=>row.addEventListener('click',event=>{if(!event.target.closest('.scheduleDoneCheck'))openScheduleItem(row.dataset.scheduleId,rowsByDate[row.dataset.scheduleDate]||[])}));
   };
   renderDailySchedule(gmt8Now().getDay());
+  /* Kad Tahukah Anda boleh dibuka dan ditutup untuk menjimatkan ruang di halaman Utama. */
+  let factDropdownOpen=false;
+  const syncFactDropdown=()=>{
+    const heading=document.getElementById('factHeading'),card=document.getElementById('dailyFact');
+    if(!heading||!card)return;
+    heading.classList.add('factDropdownHeading');
+    heading.classList.toggle('factDropdownOpen',factDropdownOpen);
+    heading.setAttribute('role','button');
+    heading.setAttribute('tabindex','0');
+    heading.setAttribute('aria-expanded',String(factDropdownOpen));
+    heading.setAttribute('aria-controls','dailyFact');
+    heading.onclick=()=>{factDropdownOpen=!factDropdownOpen;syncFactDropdown()};
+    heading.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();heading.click()}};
+    card.classList.add('factDropdownCard');
+    card.classList.toggle('factDropdownClosed',!factDropdownOpen);
+    card.hidden=false;
+    card.setAttribute('aria-expanded',String(factDropdownOpen));
+    card.onclick=event=>{
+      if(event.target.closest('button'))return;
+      if(!factDropdownOpen){factDropdownOpen=true;syncFactDropdown();return}
+      renderToddlerFactPopup();
+    };
+  };
+  const renderDailyFactBeforeDropdown=window.renderDailyFact;
+  window.renderDailyFact=function(){renderDailyFactBeforeDropdown.apply(this,arguments);syncFactDropdown()};
+  syncFactDropdown();
   const setMalayText=(element,value)=>{if(element&&element.textContent!==value)element.textContent=value};
   const applyMalayOnlyLabels=()=>{
     setMalayText(document.querySelector('#playLearnTabs [data-play-panel="games"]'),'🎮 Permainan');
@@ -1320,7 +1368,7 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
     document.querySelectorAll('#profile button').forEach(button=>{if(button.textContent.trim()==='Logout')button.innerHTML='↪ &nbsp; Log keluar'});
   };
   const renderToddlerUIBeforeMalayOnly=window.renderToddlerUI;
-  window.renderToddlerUI=function(){renderToddlerUIBeforeMalayOnly.apply(this,arguments);applyMalayOnlyLabels()};
+  window.renderToddlerUI=function(){renderToddlerUIBeforeMalayOnly.apply(this,arguments);applyMalayOnlyLabels();syncFactDropdown()};
   const updateMiniGamesLanguageBeforeMalayOnly=window.updateMiniGamesLanguage;
   if(updateMiniGamesLanguageBeforeMalayOnly)window.updateMiniGamesLanguage=function(){updateMiniGamesLanguageBeforeMalayOnly.apply(this,arguments);applyMalayOnlyLabels()};
   applyMalayOnlyLabels();
