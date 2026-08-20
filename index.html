@@ -1835,4 +1835,57 @@ startToyyibAccessPayment=async function(){
     buttons.forEach(button=>{if(document.body.contains(button)){button.disabled=false;button.textContent=button.dataset.oldText||'🛒 Beli access'}});
   }
 };
+</script>
+<script>
+/* Secure access-price editor: the Cloud Function verifies the admin account. */
+openPaymentLinkAdmin=async function(){
+  modalTitle.textContent='Tetapan Pembayaran';
+  modalBody.innerHTML=`
+    <div class="notice">Harga akses digunakan untuk bil ToyyibPay baharu. Bil yang telah dicipta tidak akan berubah.</div>
+    <div class="field">
+      <label>Harga akses penuh (RM)</label>
+      <input id="adminAccessPrice" type="number" min="1" max="100000" step="0.01" inputmode="decimal" disabled placeholder="Sedang memuatkan…">
+      <div class="muted">Hanya admin boleh melihat dan menukar harga ini.</div>
+    </div>
+    <div class="field"><label>URL butang beli access code</label><input id="adminAccessPaymentUrl" type="url" placeholder="https://..." value="${esc(paymentLinks.accessCodeUrl||'')}"></div>
+    <div class="field"><label>URL bayaran profil anak tambahan</label><input id="adminProfilesPaymentUrl" type="url" placeholder="https://..." value="${esc(paymentLinks.extraProfilesUrl||'')}"></div>
+    <button class="primary wide" id="savePaymentSettingsBtn" disabled>Simpan tetapan pembayaran</button>
+    <button class="secondary wide" id="backPaymentLinksAdmin" style="margin-top:9px">← Kembali ke panel admin</button>`;
+  modal.classList.add('open');
+  backPaymentLinksAdmin.onclick=openToddlerAdminHub;
+  try{
+    const result=await fbFunctions.httpsCallable('manageToddlerAccessPrice')({});
+    const cents=Number(result.data?.accessPriceCents||4900);
+    adminAccessPrice.value=(cents/100).toFixed(2);
+    adminAccessPrice.disabled=false;
+    savePaymentSettingsBtn.disabled=false;
+  }catch(error){
+    console.error('Access price could not be loaded.',error);
+    toast('Harga tidak dapat dimuatkan. Pastikan fungsi harga sudah dideploy.');
+  }
+  savePaymentSettingsBtn.onclick=saveToddlerPaymentSettings;
+};
+
+async function saveToddlerPaymentSettings(){
+  const button=document.getElementById('savePaymentSettingsBtn');
+  const amount=Number(document.getElementById('adminAccessPrice')?.value);
+  const accessPriceCents=Math.round(amount*100);
+  const accessRaw=document.getElementById('adminAccessPaymentUrl')?.value.trim()||'';
+  const profilesRaw=document.getElementById('adminProfilesPaymentUrl')?.value.trim()||'';
+  const accessCodeUrl=accessRaw?validPaymentUrl(accessRaw):'';
+  const extraProfilesUrl=profilesRaw?validPaymentUrl(profilesRaw):'';
+  if(!Number.isFinite(amount)||amount<1||amount>100000||Math.abs(amount*100-accessPriceCents)>.001)return toast('Masukkan harga yang sah dengan maksimum 2 titik perpuluhan.');
+  if((accessRaw&&!accessCodeUrl)||(profilesRaw&&!extraProfilesUrl))return toast('Gunakan URL HTTPS yang sah.');
+  button.disabled=true;button.textContent='Sedang menyimpan…';
+  try{
+    await fbFunctions.httpsCallable('manageToddlerAccessPrice')({accessPriceCents});
+    await fbDb.ref('appSettings/paymentLinks').set({accessCodeUrl,extraProfilesUrl,updatedAt:firebase.database.ServerValue.TIMESTAMP,updatedBy:fbAuth.currentUser.uid});
+    paymentLinks={accessCodeUrl,extraProfilesUrl};
+    toast(`Harga akses RM ${amount.toFixed(2)} berjaya disimpan.`);
+    openToddlerAdminHub();
+  }catch(error){
+    console.error('Payment settings could not be saved.',error);
+    toast('Tetapan pembayaran gagal disimpan. Pastikan anda login sebagai admin.');
+  }finally{if(button?.isConnected){button.disabled=false;button.textContent='Simpan tetapan pembayaran'}}
+}
 </script></body></html>
