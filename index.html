@@ -1363,11 +1363,10 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
     .weeklyHomeTitle{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
     .weeklyHomeContent small{display:block;color:#c5d8d0;font-size:10px}
     .weeklyHomeEmpty{padding:10px 12px;color:#c7d8d1;font-size:12px}
-    .personalScheduleSection{position:relative;margin:-10px 0 28px;padding:16px 15px 25px;border:10px solid #a96f39;border-radius:22px;background:linear-gradient(145deg,#214e42,#173e35);box-shadow:inset 0 0 0 3px rgba(255,255,255,.08),0 12px 25px rgba(53,42,29,.2);text-align:left;color:#fff}
-    .personalScheduleSection:after{content:"🧽  —  🩵  🩷  💛";position:absolute;left:18px;right:18px;bottom:-17px;height:25px;padding:3px 14px;border-radius:4px 4px 8px 8px;background:linear-gradient(#b77b40,#925a2d);box-shadow:0 5px 8px rgba(63,39,21,.24);color:#fff;font-size:11px;letter-spacing:4px}
+    .personalScheduleSection{position:relative;margin:-10px 0 25px;padding:16px 15px;border:10px solid #a96f39;border-radius:22px;background:linear-gradient(145deg,#214e42,#173e35);box-shadow:inset 0 0 0 3px rgba(255,255,255,.08),0 12px 25px rgba(53,42,29,.2);text-align:left;color:#fff}
     .personalScheduleSectionHead{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;padding:2px 3px 10px;border:0;border-bottom:1px dashed rgba(255,255,255,.24);background:transparent;color:#fff;font:inherit;cursor:pointer;text-align:left}
     .personalScheduleSectionTitle{min-width:0}.personalScheduleSectionHead h2{margin:0;font-size:22px;color:#fff}.personalScheduleSectionSubtitle{display:block;margin-top:3px;color:#cfe1da;font-size:10px;font-weight:600;line-height:1.3}.personalScheduleSectionArrow{display:grid;place-items:center;width:30px;height:30px;flex:0 0 30px;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:14px;transition:transform .2s ease}
-    .personalScheduleSection.personalScheduleClosed{padding-bottom:16px}.personalScheduleSection.personalScheduleClosed .personalScheduleRows{display:none}.personalScheduleSection.personalScheduleClosed .personalScheduleSectionHead{margin-bottom:0;padding-bottom:2px;border-bottom:0}.personalScheduleSection:not(.personalScheduleClosed) .personalScheduleSectionArrow{transform:rotate(180deg)}
+    .personalScheduleSection.personalScheduleClosed .personalScheduleRows{display:none}.personalScheduleSection.personalScheduleClosed .personalScheduleSectionHead{margin-bottom:0;padding-bottom:2px;border-bottom:0}.personalScheduleSection:not(.personalScheduleClosed) .personalScheduleSectionArrow{transform:rotate(180deg)}
     .personalScheduleAdd{width:100%;margin-top:2px;padding:8px 11px;border:1px dashed rgba(255,255,255,.3);border-radius:11px;background:rgba(255,255,255,.13);color:#fff;font:inherit;font-size:11px;font-weight:900;cursor:pointer;transition:.18s ease}.personalScheduleAdd:hover{background:rgba(255,255,255,.22)}
     .personalScheduleRows{display:grid;gap:7px}
     .personalScheduleRow{display:grid;grid-template-columns:68px minmax(0,1fr) 30px;align-items:center;gap:8px;padding:8px 9px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.09)}
@@ -1389,6 +1388,8 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
     .weeklyScheduleAge{font-size:10px;font-weight:700;color:#d6e5df;letter-spacing:.02em;text-shadow:none}
     .weeklyRecommended{display:inline-flex;padding:4px 8px;border-radius:999px;background:#ffd978;color:#58451c;font-size:9px;font-weight:900;letter-spacing:.04em;text-shadow:none;text-transform:uppercase}
     .weeklyBoardArrow{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;background:rgba(255,255,255,.14);font-size:14px;transition:transform .2s ease}
+    #dailyScheduleBoard{margin-bottom:25px!important;padding-bottom:19px!important}
+    #dailyScheduleBoard:after{display:none!important;content:none!important}
     #dailyScheduleBoard.scheduleBoardClosed{padding-bottom:15px!important}
     #dailyScheduleBoard.scheduleBoardClosed #dailySchedule{display:none}
     #dailyScheduleBoard:not(.scheduleBoardClosed) .weeklyBoardArrow{transform:rotate(180deg)}
@@ -1399,7 +1400,9 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
       .weeklyHomeSchedule{gap:7px}.weeklyHomeDayHead{padding:7px 9px}.weeklyHomeDayHead h3{font-size:14px}
       .weeklyHomeRow{grid-template-columns:64px minmax(0,1fr) 30px;gap:6px;padding:7px 8px}
       .weeklyHomeTime{font-size:10px}.weeklyHomeTitle{font-size:12px}.weeklyHomeContent .mealBadge{font-size:9px;padding:2px 5px}
-      .personalScheduleSection{padding:13px 10px 22px;border-width:8px;border-radius:19px}.personalScheduleSectionHead h2{font-size:19px}.personalScheduleSectionSubtitle{font-size:9px}.personalScheduleDayHead{padding:8px;font-size:12px}.personalScheduleRow{grid-template-columns:56px minmax(0,1fr) 28px;padding:7px}.personalScheduleRowTime{font-size:9px}.personalScheduleRowTitle b{font-size:11px}
+      #dailyScheduleBoard{padding-bottom:16px!important}
+      #dailyScheduleBoard.scheduleBoardClosed{padding-bottom:13px!important}
+      .personalScheduleSection{padding:13px 10px;border-width:8px;border-radius:19px}.personalScheduleSectionHead h2{font-size:19px}.personalScheduleSectionSubtitle{font-size:9px}.personalScheduleDayHead{padding:8px;font-size:12px}.personalScheduleRow{grid-template-columns:56px minmax(0,1fr) 28px;padding:7px}.personalScheduleRowTime{font-size:9px}.personalScheduleRowTitle b{font-size:11px}
     }
   `;
   document.head.appendChild(weeklyHomeStyle);
