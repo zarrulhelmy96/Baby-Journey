@@ -1793,4 +1793,46 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
   const loadBeforeRoutine=window.loadToddlerData;
   window.loadToddlerData=async function(){await loadBeforeRoutine.apply(this,arguments);renderToddlerActivities();renderToddlerRoutines()};
 })();
+</script>
+<style>
+/* Payment feedback must stay visible above the login and expired-trial screens. */
+.toast{z-index:260!important;max-width:min(90vw,460px);text-align:center}
+</style>
+<script>
+/* Keep payment failures visible instead of hiding them behind an auth overlay. */
+startToyyibAccessPayment=async function(){
+  const user=fbAuth.currentUser;
+  if(!user){
+    const message='Sila log masuk sebelum membeli akses.';
+    toast(message);
+    setTimeout(()=>alert(message),80);
+    return;
+  }
+  const buttons=['profileBuyAccessBtn','expiredBuyAccessBtn'].map(id=>document.getElementById(id)).filter(Boolean);
+  buttons.forEach(button=>{button.disabled=true;button.dataset.oldText=button.textContent;button.textContent='Menyediakan pembayaran…'});
+  try{
+    toast('Sedang menyediakan pembayaran ToyyibPay…');
+    const callable=fbFunctions.httpsCallable('createToddlerPayment');
+    const result=await callable({source:location.protocol==='file:'?'local-preview':'live-app'});
+    if(result.data?.alreadyActive){
+      toast('Akses anda sudah aktif.');
+      const snap=await fbDb.ref('users/'+user.uid).once('value');
+      window.currentAccessProfile=snap.val()||window.currentAccessProfile;
+      renderTrialAccessCard(window.currentAccessProfile);
+      return;
+    }
+    const url=result.data?.paymentUrl;
+    if(!/^https:\/\/(?:www\.)?toyyibpay\.com\/[A-Za-z0-9_-]+\/?(?:\?.*)?$/.test(url||''))throw new Error('Pautan pembayaran ToyyibPay tidak sah.');
+    window.location.assign(url);
+  }catch(error){
+    console.error('ToyyibPay payment error.',error);
+    const code=String(error?.code||'');
+    const detail=String(error?.message||'').replace(/^FirebaseError:\s*/,'');
+    const message=code.includes('unauthenticated')?'Sesi log masuk tamat. Sila log masuk semula.':code.includes('unavailable')?'ToyyibPay tidak dapat dihubungi sekarang. Cuba sebentar lagi.':'Pembayaran tidak dapat dimulakan. Sila cuba lagi.';
+    toast(message);
+    setTimeout(()=>alert(message+(detail?'\n\nButiran: '+detail:'')),80);
+  }finally{
+    buttons.forEach(button=>{if(document.body.contains(button)){button.disabled=false;button.textContent=button.dataset.oldText||'🛒 Beli access'}});
+  }
+};
 </script></body></html>
