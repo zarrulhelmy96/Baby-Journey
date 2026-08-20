@@ -1823,6 +1823,7 @@ startToyyibAccessPayment=async function(){
     }
     const url=result.data?.paymentUrl;
     if(!/^https:\/\/(?:www\.)?toyyibpay\.com\/[A-Za-z0-9_-]+\/?(?:\?.*)?$/.test(url||''))throw new Error('Pautan pembayaran ToyyibPay tidak sah.');
+    if(result.data?.billCode)localStorage.setItem('toddlersDayPendingBill',result.data.billCode);
     window.location.assign(url);
   }catch(error){
     console.error('ToyyibPay payment error.',error);
@@ -1888,4 +1889,58 @@ async function saveToddlerPaymentSettings(){
     toast('Tetapan pembayaran gagal disimpan. Pastikan anda login sebagai admin.');
   }finally{if(button?.isConnected){button.disabled=false;button.textContent='Simpan tetapan pembayaran'}}
 }
+</script>
+<script>
+/* Confirm ToyyibPay on return and refresh paid access before the access gate is rendered. */
+(function(){
+  const paymentParams=new URLSearchParams(location.search);
+  const isPaymentReturn=paymentParams.get('payment')==='return'||paymentParams.has('status_id');
+  const paymentStatus=paymentParams.get('status_id')||'';
+  const returnedBill=paymentParams.get('billcode')||localStorage.getItem('toddlersDayPendingBill')||'';
+  let paymentReturnHandled=false;
+  const activateBeforePaymentReturn=window.activateVerifiedUser;
+
+  function cleanPaymentReturnUrl(){
+    ['payment','status_id','billcode','order_id'].forEach(key=>paymentParams.delete(key));
+    const query=paymentParams.toString();
+    history.replaceState({},document.title,location.pathname+(query?'?'+query:'')+location.hash);
+  }
+
+  window.activateVerifiedUser=async function(user){
+    const currentProfile=user?(await fbDb.ref('users/'+user.uid).once('value')).val()||{}:{};
+    const shouldRecoverPayment=user&&currentProfile.accessActive!==true&&
+      (isPaymentReturn||returnedBill||sessionStorage.getItem('toddlersDayPaymentRecoveryChecked')!=='1');
+    if(shouldRecoverPayment&&!paymentReturnHandled){
+      paymentReturnHandled=true;
+      sessionStorage.setItem('toddlersDayPaymentRecoveryChecked','1');
+      if(!paymentStatus||paymentStatus==='1'){
+        try{
+          if(isPaymentReturn)toast('Pembayaran diterima. Sedang mengaktifkan akses penuh…');
+          const result=await fbFunctions.httpsCallable('verifyToddlerPayment')({billCode:returnedBill});
+          if(result.data?.paid){
+            localStorage.removeItem('toddlersDayPendingBill');
+            await user.getIdToken(true);
+            cleanPaymentReturnUrl();
+            const output=await activateBeforePaymentReturn.apply(this,arguments);
+            const fresh=(await fbDb.ref('users/'+user.uid).once('value')).val()||{};
+            window.currentAccessProfile=fresh;
+            renderTrialAccessCard(fresh);
+            toast('Pembayaran berjaya. Akses penuh telah diaktifkan!');
+            setTimeout(()=>showAccessWelcome(user),250);
+            return output;
+          }
+          if(isPaymentReturn){paymentReturnHandled=false;toast('Pembayaran masih diproses. Sila tunggu sebentar dan buka semula aplikasi.');}
+        }catch(error){
+          if(isPaymentReturn)paymentReturnHandled=false;
+          console.error('Payment return verification failed.',error);
+          if(isPaymentReturn)toast('Pembayaran berjaya tetapi pengaktifan masih diproses. Cuba buka semula aplikasi sebentar lagi.');
+        }
+      }else if(paymentStatus&&paymentStatus!=='1'){
+        cleanPaymentReturnUrl();
+        toast(paymentStatus==='2'?'Pembayaran masih belum selesai.':'Pembayaran tidak berjaya atau dibatalkan.');
+      }
+    }
+    return activateBeforePaymentReturn.apply(this,arguments);
+  };
+})();
 </script></body></html>
