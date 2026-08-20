@@ -23,10 +23,11 @@ messaging.onBackgroundMessage(payload => {
   });
 });
 
-const CACHE_NAME = 'toddlers-day-shell-v2';
+const CACHE_NAME = 'toddlers-day-shell-v3';
 const APP_SHELL = [
   './',
-  './toddlers-day.html',
+  './index.html',
+  './firebase-messaging-sw.js',
   './manifest.webmanifest',
   './assets/fonts/Skynight.otf',
   './assets/icons/toddler-day-icon.svg',
@@ -66,7 +67,7 @@ self.addEventListener('fetch', event => {
         })
         .catch(async () =>
           (await caches.match(request)) ||
-          (await caches.match('./toddlers-day.html')) ||
+          (await caches.match('./index.html')) ||
           (await caches.match('./'))
         )
     );
