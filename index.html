@@ -91,7 +91,7 @@ body.dark .toddlerHero{background:linear-gradient(135deg,#3f5b54 0%,#304843 54%,
   .modal{width:min(calc(100vw - 48px),820px)}
   .authScreen,.verifyScreen{width:min(calc(100vw - 48px),820px)}
   .page{padding:12px 22px 38px}
-  .topbar{padding:14px 20px 12px}
+.topbar{padding:14px 20px 12px}.topbarActions{display:flex;align-items:center;gap:8px}.iosRefreshBtn{display:none}.iosRefreshBtn.isRefreshing{animation:iosRefreshSpin .7s linear infinite;pointer-events:none}@keyframes iosRefreshSpin{to{transform:rotate(360deg)}}
   .homeTools{grid-template-columns:minmax(230px,.78fr) minmax(0,1.22fr)}
   .miniGamesGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .activityGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -255,7 +255,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </style>
 </head>
 <body><div class="app">
-<header class="topbar"><div class="brand"><div class="brandmark">🌈</div><div>Toddler's Day<div class="muted">Play, learn & grow.</div></div></div><button class="iconbtn" id="themeBtn" aria-label="Tukar tema">☾</button></header>
+<header class="topbar"><div class="brand"><div class="brandmark">🌈</div><div>Toddler's Day<div class="muted">Play, learn & grow.</div></div></div><div class="topbarActions"><button class="iconbtn iosRefreshBtn" id="iosRefreshBtn" type="button" aria-label="Muat semula aplikasi" title="Muat semula">↻</button><button class="iconbtn" id="themeBtn" aria-label="Tukar tema">☾</button></div></header>
 
 <main id="home" class="page active"><div class="hero"><div class="babyrow"><div class="avatar">👶🏻</div><div><div class="pill">💚 Semua baik</div><h1 id="babyName">Aisyah</h1><div class="muted" id="babyAge"></div></div></div><p class="muted" id="todayDate"></p></div>
 <h2>Ringkasan hari ini</h2><div class="grid" id="stats"></div>
@@ -1555,8 +1555,35 @@ function toast(s){let t=document.getElementById('toast');t.textContent=lang()===
 (() => {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const iosRefreshButton = document.getElementById('iosRefreshBtn');
+  if (isIOS && iosRefreshButton) {
+    iosRefreshButton.style.display = 'grid';
+    iosRefreshButton.addEventListener('click', async () => {
+      if (iosRefreshButton.classList.contains('isRefreshing')) return;
+      iosRefreshButton.classList.add('isRefreshing');
+      iosRefreshButton.setAttribute('aria-label', 'Sedang memuat semula');
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.allSettled(registrations.map(registration => registration.update()));
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.filter(key => key.startsWith('toddlers-day-shell-')).map(key => caches.delete(key)));
+        }
+        await fetch(`./index.html?ios-refresh=${Date.now()}`, { cache: 'no-store', credentials: 'same-origin' });
+      } catch (error) {
+        console.warn('Semakan kemas kini iPhone tidak berjaya:', error);
+      }
+      window.location.reload();
+    });
+  }
+
+  window.addEventListener('pageshow', event => {
+    if (isIOS && event.persisted) window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(error => {
+    navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).then(registration => registration.update()).catch(error => {
       console.warn('PWA service worker tidak dapat didaftarkan:', error);
     });
   });

@@ -23,7 +23,7 @@ messaging.onBackgroundMessage(payload => {
   });
 });
 
-const CACHE_NAME = 'toddlers-day-shell-v3';
+const CACHE_NAME = 'toddlers-day-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -59,7 +59,7 @@ self.addEventListener('fetch', event => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-store' })
         .then(response => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
